@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Perfil profesional del usuario",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "ID del usuario en Firebase Auth" },
+        "email": { "type": "string", "format": "email" },
+        "fullName": { "type": "string" },
+        "title": { "type": "string", "description": "Cargo o especialidad" },
+        "bio": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "linkedin": { "type": "string" },
+            "twitter": { "type": "string" },
+            "github": { "type": "string" },
+            "website": { "type": "string" },
+            "telegram": { "type": "string" },
+            "skype": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Experience": {
+      "title": "Experience",
+      "description": "Experiencia laboral del usuario",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "company": { "type": "string" },
+        "role": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "current": { "type": "boolean" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["userId", "company", "role", "startDate"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Proyectos del usuario",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "role": { "type": "string" },
+        "url": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "location": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["userId", "name", "description"]
+    },
+    "Skill": {
+      "title": "Skill",
+      "description": "Habilidades del usuario",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string", "enum": ["technical", "soft", "tools"] },
+        "order": { "type": "number" }
+      },
+      "required": ["userId", "name", "category"]
+    },
+    "CardDesign": {
+      "title": "CardDesign",
+      "description": "ConfiguraciÃ³n visual de la tarjeta generada por IA",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "layout": { "type": "string", "enum": ["horizontal", "vertical"] },
+        "theme": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "backgroundColor": { "type": "string" },
+        "textColor": { "type": "string" },
+        "fontFamily": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Datos privados del usuario (email de login, configuraciÃ³n)"
+    },
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Perfil pÃºblico del usuario (tarjeta digital)"
+    },
+    "/profiles/{userId}/experiences/{experienceId}": {
+      "schema": { "$ref": "#/entities/Experience" },
+      "description": "Experiencia laboral pÃºblica"
+    },
+    "/profiles/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Proyectos pÃºblicos"
+    },
+    "/profiles/{userId}/skills/{skillId}": {
+      "schema": { "$ref": "#/entities/Skill" },
+      "description": "Habilidades pÃºblicas"
+    },
+    "/profiles/{userId}/cardDesign/current": {
+      "schema": { "$ref": "#/entities/CardDesign" },
+      "description": "DiseÃ±o pÃºblico de la tarjeta"
+    }
+  }
+}

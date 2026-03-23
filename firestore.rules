@@ -1,0 +1,261 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - email: string (required, immutable)
+    //   - createdAt: string (required, immutable)
+    //
+    // Collection: profiles
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - fullName: string (optional, max 100)
+    //   - title: string (optional, max 100)
+    //   - bio: string (optional, max 1000)
+    //   - avatarUrl: string (optional, url)
+    //   - phone: string (optional, max 50)
+    //   - email: string (optional, max 100)
+    //   - location: string (optional, max 100)
+    //   - socialLinks: map (optional)
+    //   - createdAt: string (required, immutable)
+    //   - updatedAt: string (required)
+    //
+    // Collection: profiles/{userId}/experiences
+    // Document ID: {experienceId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - company: string (required, max 100)
+    //   - role: string (required, max 100)
+    //   - startDate: string (required)
+    //   - endDate: string (optional)
+    //   - current: boolean (optional)
+    //   - description: string (optional, max 2000)
+    //   - order: number (optional)
+    //
+    // Collection: profiles/{userId}/projects
+    // Document ID: {projectId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - name: string (required, max 100)
+    //   - description: string (required, max 2000)
+    //   - role: string (optional, max 100)
+    //   - url: string (optional, url)
+    //   - imageUrl: string (optional, url)
+    //   - order: number (optional)
+    //
+    // Collection: profiles/{userId}/skills
+    // Document ID: {skillId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - name: string (required, max 50)
+    //   - category: string (required, in ['technical', 'soft', 'tools'])
+    //   - order: number (optional)
+    //
+    // Collection: profiles/{userId}/cardDesign
+    // Document ID: current
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - prompt: string (optional, max 1000)
+    //   - layout: string (optional, in ['horizontal', 'vertical'])
+    //   - theme: string (optional, max 50)
+    //   - primaryColor: string (optional, max 20)
+    //   - backgroundColor: string (optional, max 20)
+    //   - textColor: string (optional, max 20)
+    //   - fontFamily: string (optional, max 50)
+    //   - updatedAt: string (required)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    function isDocUserIdOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+    function userIdUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+    function userIdNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+    function isValidUrl(url) {
+      return url is string && (url == "" || url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
+    }
+    function isValidOptionalUrl(field) {
+      return !(field in request.resource.data) || isValidUrl(request.resource.data[field]);
+    }
+    function isValidOptionalUrlList(field, maxSize) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is list &&
+              request.resource.data[field].size() <= maxSize);
+    }
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser() {
+      return hasOnlyAllowedFields(['uid', 'email', 'createdAt']) &&
+             validStringLength('uid', 1, 100) &&
+             isValidEmail(request.resource.data.email) &&
+             isValidDateString(request.resource.data.createdAt);
+    }
+
+    function isValidProfile() {
+      return hasOnlyAllowedFields(['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'createdAt', 'updatedAt']) &&
+             validStringLength('uid', 1, 100) &&
+             isValidOptionalString('fullName', 0, 100) &&
+             isValidOptionalString('title', 0, 100) &&
+             isValidOptionalString('bio', 0, 1000) &&
+             isValidOptionalString('phone', 0, 50) &&
+             isValidOptionalString('email', 0, 100) &&
+             isValidOptionalString('location', 0, 100) &&
+             isValidOptionalUrl('avatarUrl') &&
+             (!( 'socialLinks' in request.resource.data ) || request.resource.data.socialLinks is map) &&
+             (!( 'allowPdfDownload' in request.resource.data ) || request.resource.data.allowPdfDownload is bool) &&
+             isValidDateString(request.resource.data.createdAt) &&
+             isValidDateString(request.resource.data.updatedAt);
+    }
+
+    function isValidExperience() {
+      return hasOnlyAllowedFields(['userId', 'company', 'role', 'startDate', 'endDate', 'current', 'description', 'location', 'order']) &&
+             validStringLength('userId', 1, 100) &&
+             validStringLength('company', 1, 100) &&
+             validStringLength('role', 1, 100) &&
+             validStringLength('startDate', 1, 50) &&
+             isValidOptionalString('endDate', 0, 50) &&
+             (!( 'current' in request.resource.data ) || request.resource.data.current is bool) &&
+             isValidOptionalString('description', 0, 2000) &&
+             isValidOptionalString('location', 0, 100) &&
+             (!( 'order' in request.resource.data ) || request.resource.data.order is number);
+    }
+
+    function isValidProject() {
+      return hasOnlyAllowedFields(['userId', 'name', 'description', 'role', 'url', 'imageUrl', 'imageUrls', 'location', 'order']) &&
+             validStringLength('userId', 1, 100) &&
+             validStringLength('name', 1, 100) &&
+             validStringLength('description', 1, 2000) &&
+             isValidOptionalString('role', 0, 100) &&
+             isValidOptionalUrl('url') &&
+             isValidOptionalUrl('imageUrl') &&
+             isValidOptionalUrlList('imageUrls', 3) &&
+             isValidOptionalString('location', 0, 100) &&
+             (!( 'order' in request.resource.data ) || request.resource.data.order is number);
+    }
+
+    function isValidSkill() {
+      return hasOnlyAllowedFields(['userId', 'name', 'category', 'order']) &&
+             validStringLength('userId', 1, 100) &&
+             validStringLength('name', 1, 50) &&
+             request.resource.data.category in ['technical', 'soft', 'tools'] &&
+             (!( 'order' in request.resource.data ) || request.resource.data.order is number);
+    }
+
+    function isValidCardDesign() {
+      return hasOnlyAllowedFields(['userId', 'prompt', 'layout', 'theme', 'primaryColor', 'backgroundColor', 'textColor', 'fontFamily', 'updatedAt']) &&
+             validStringLength('userId', 1, 100) &&
+             isValidOptionalString('prompt', 0, 1000) &&
+             (!( 'layout' in request.resource.data ) || request.resource.data.layout in ['horizontal', 'vertical']) &&
+             isValidOptionalString('theme', 0, 50) &&
+             isValidOptionalString('primaryColor', 0, 20) &&
+             isValidOptionalString('backgroundColor', 0, 20) &&
+             isValidOptionalString('textColor', 0, 20) &&
+             isValidOptionalString('fontFamily', 0, 50) &&
+             isValidDateString(request.resource.data.updatedAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Private Users Collection (Only owner can read/write)
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser() && uidUnchanged();
+      allow update: if isOwner(userId) && isValidUser() && uidNotModified() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isOwner(userId);
+    }
+
+    // Public Profiles Collection
+    match /profiles/{userId} {
+      // Public read access for the digital card
+      allow read: if true;
+      allow create: if isOwner(userId) && isValidProfile() && uidUnchanged();
+      allow update: if isOwner(userId) && isValidProfile() && uidNotModified() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isOwner(userId);
+
+      match /experiences/{experienceId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidExperience() && userIdUnchanged();
+        allow update: if isOwner(userId) && isValidExperience() && userIdNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      match /projects/{projectId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidProject() && userIdUnchanged();
+        allow update: if isOwner(userId) && isValidProject() && userIdNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      match /skills/{skillId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidSkill() && userIdUnchanged();
+        allow update: if isOwner(userId) && isValidSkill() && userIdNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      match /cardDesign/current {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidCardDesign() && userIdUnchanged();
+        allow update: if isOwner(userId) && isValidCardDesign() && userIdNotModified();
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
