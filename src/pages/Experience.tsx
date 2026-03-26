@@ -2,13 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, doc, getDocs, getDoc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { Plus, Trash2, Briefcase, FolderGit2, GraduationCap, Loader2, ExternalLink, Image as ImageIcon, X, FileText, Download, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, Briefcase, FolderGit2, GraduationCap, Loader2, ExternalLink, Image as ImageIcon, X, FileText, Download, ToggleLeft, ToggleRight, Mail, Phone, MapPin } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
-import { Experience as ExperienceType, Project as ProjectType, Skill as SkillType, Profile as ProfileType } from '../types';
+import { Experience as ExperienceType, Project as ProjectType, Skill as SkillType, Profile as ProfileType, Certificate as CertificateType } from '../types';
 import { useReactToPrint } from 'react-to-print';
+import { DossierView } from '../components/DossierView';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const Experience: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'experiences' | 'projects' | 'skills' | 'cv'>('experiences');
 
@@ -17,6 +20,7 @@ export const Experience: React.FC = () => {
   const [experiences, setExperiences] = useState<ExperienceType[]>([]);
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const [skills, setSkills] = useState<SkillType[]>([]);
+  const [certificates, setCertificates] = useState<CertificateType[]>([]);
 
   // States for forms
   const [showExpForm, setShowExpForm] = useState(false);
@@ -27,6 +31,9 @@ export const Experience: React.FC = () => {
 
   const [showSkillForm, setShowSkillForm] = useState(false);
   const [newSkill, setNewSkill] = useState<Partial<SkillType>>({ category: 'technical' });
+
+  const [showCertForm, setShowCertForm] = useState(false);
+  const [newCert, setNewCert] = useState<Partial<CertificateType>>({});
 
   // State for image lightbox
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -43,7 +50,7 @@ export const Experience: React.FC = () => {
       try {
         const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
         if (profileSnap.exists()) {
-          setProfile({ id: profileSnap.id, ...profileSnap.data() } as ProfileType);
+          setProfile({ id: profileSnap.id, ...profileSnap.data() } as unknown as ProfileType);
         }
 
         const expSnap = await getDocs(collection(db, `profiles/${user.uid}/experiences`));
@@ -54,6 +61,9 @@ export const Experience: React.FC = () => {
 
         const skillSnap = await getDocs(collection(db, `profiles/${user.uid}/skills`));
         setSkills(skillSnap.docs.map(d => ({ id: d.id, ...d.data() } as SkillType)));
+
+        const certSnap = await getDocs(collection(db, `profiles/${user.uid}/certificates`));
+        setCertificates(certSnap.docs.map(d => ({ id: d.id, ...d.data() } as CertificateType)));
       } catch (error) {
         handleFirestoreError(error, OperationType.GET, `profiles/${user.uid}/*`);
       } finally {
@@ -90,7 +100,7 @@ export const Experience: React.FC = () => {
 
   // --- Handlers for Projects ---
   const handleProjectImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files || []) as File[];
     if (!files.length) return;
 
     const currentImages = newProj.imageUrls || (newProj.imageUrl ? [newProj.imageUrl] : []);
@@ -200,6 +210,69 @@ export const Experience: React.FC = () => {
     }
   };
 
+  // --- Handlers for Certificates ---
+  const handleCertImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        setNewCert({ ...newCert, imageUrl: dataUrl });
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddCertificate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const certData = { ...newCert, userId: user.uid };
+      const docRef = await addDoc(collection(db, `profiles/${user.uid}/certificates`), certData);
+      setCertificates([...certificates, { id: docRef.id, ...certData } as CertificateType]);
+      setShowCertForm(false);
+      setNewCert({});
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `profiles/${user.uid}/certificates`);
+    }
+  };
+
+  const handleDeleteCertificate = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, `profiles/${user.uid}/certificates`, id));
+      setCertificates(certificates.filter(c => c.id !== id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `profiles/${user.uid}/certificates/${id}`);
+    }
+  };
+
   const togglePdfDownload = async () => {
     if (!user || !profile) return;
     const newValue = !profile.allowPdfDownload;
@@ -220,9 +293,9 @@ export const Experience: React.FC = () => {
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Trayectoria</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">{t('exp.title')}</h1>
         <p className="mt-2 text-zinc-600">
-          Añade tu experiencia laboral, proyectos destacados y habilidades clave.
+          {t('exp.subtitle')}
         </p>
       </div>
 
@@ -232,25 +305,25 @@ export const Experience: React.FC = () => {
           onClick={() => setActiveTab('experiences')}
           className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'experiences' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}`}
         >
-          <Briefcase className="w-4 h-4" /> Experiencia
+          <Briefcase className="w-4 h-4" /> {t('exp.tab.exp')}
         </button>
         <button
           onClick={() => setActiveTab('projects')}
           className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'projects' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}`}
         >
-          <FolderGit2 className="w-4 h-4" /> Proyectos
+          <FolderGit2 className="w-4 h-4" /> {t('exp.tab.proj')}
         </button>
         <button
           onClick={() => setActiveTab('skills')}
           className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'skills' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}`}
         >
-          <GraduationCap className="w-4 h-4" /> Habilidades
+          <GraduationCap className="w-4 h-4" /> {t('exp.tab.skills')}
         </button>
         <button
           onClick={() => setActiveTab('cv')}
           className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'cv' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'}`}
         >
-          <FileText className="w-4 h-4" /> CV / Hoja de Vida
+          <FileText className="w-4 h-4" /> {t('exp.tab.cv')}
         </button>
       </div>
 
@@ -261,12 +334,12 @@ export const Experience: React.FC = () => {
         {activeTab === 'experiences' && (
           <>
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-zinc-900">Experiencia Laboral</h2>
+              <h2 className="text-xl font-semibold text-zinc-900">{t('exp.workExp')}</h2>
               <button 
                 onClick={() => setShowExpForm(!showExpForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
               >
-                <Plus className="w-4 h-4" /> Añadir Experiencia
+                <Plus className="w-4 h-4" /> {t('exp.addExp')}
               </button>
             </div>
 
@@ -274,37 +347,37 @@ export const Experience: React.FC = () => {
               <form onSubmit={handleAddExperience} className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Empresa</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.company')}</label>
                     <input required type="text" value={newExp.company || ''} onChange={e => setNewExp({...newExp, company: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Cargo</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.role')}</label>
                     <input required type="text" value={newExp.role || ''} onChange={e => setNewExp({...newExp, role: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Fecha Inicio</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.startDate')}</label>
                     <input required type="month" value={newExp.startDate || ''} onChange={e => setNewExp({...newExp, startDate: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Fecha Fin</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.endDate')}</label>
                     <input type="month" disabled={newExp.current} value={newExp.endDate || ''} onChange={e => setNewExp({...newExp, endDate: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500 disabled:bg-zinc-100" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Ubicación (Ciudad - País)</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.location')}</label>
                     <input type="text" value={newExp.location || ''} onChange={e => setNewExp({...newExp, location: e.target.value})} placeholder="Ej: Madrid - España" className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" id="current" checked={newExp.current || false} onChange={e => setNewExp({...newExp, current: e.target.checked, endDate: ''})} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                  <label htmlFor="current" className="text-sm text-zinc-700">Trabajo aquí actualmente</label>
+                  <label htmlFor="current" className="text-sm text-zinc-700">{t('exp.currentJob')}</label>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1">Descripción y Logros</label>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.description')}</label>
                   <textarea rows={3} value={newExp.description || ''} onChange={e => setNewExp({...newExp, description: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500 resize-none" />
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
-                  <button type="button" onClick={() => setShowExpForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">Cancelar</button>
-                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Guardar</button>
+                  <button type="button" onClick={() => setShowExpForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">{t('exp.cancel')}</button>
+                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{t('exp.save')}</button>
                 </div>
               </form>
             )}
@@ -313,8 +386,8 @@ export const Experience: React.FC = () => {
               {experiences.length === 0 && !showExpForm && (
                 <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 border-dashed">
                   <Briefcase className="mx-auto h-12 w-12 text-zinc-300" />
-                  <h3 className="mt-2 text-sm font-semibold text-zinc-900">Sin experiencia</h3>
-                  <p className="mt-1 text-sm text-zinc-500">Comienza añadiendo tu historial laboral.</p>
+                  <h3 className="mt-2 text-sm font-semibold text-zinc-900">{t('exp.noExp')}</h3>
+                  <p className="mt-1 text-sm text-zinc-500">{t('exp.noExpDesc')}</p>
                 </div>
               )}
               {experiences.map((exp) => (
@@ -326,7 +399,7 @@ export const Experience: React.FC = () => {
                       {exp.location && <span className="text-zinc-500 font-normal text-sm ml-2">&bull; {exp.location}</span>}
                     </p>
                     <p className="text-sm text-zinc-500 mt-1">
-                      {exp.startDate} - {exp.current ? 'Presente' : exp.endDate}
+                      {exp.startDate} - {exp.current ? t('exp.present') : exp.endDate}
                     </p>
                     {exp.description && <p className="mt-3 text-zinc-700 text-sm whitespace-pre-wrap">{exp.description}</p>}
                   </div>
@@ -343,12 +416,12 @@ export const Experience: React.FC = () => {
         {activeTab === 'projects' && (
           <>
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-zinc-900">Proyectos Destacados</h2>
+              <h2 className="text-xl font-semibold text-zinc-900">{t('exp.featuredProj')}</h2>
               <button 
                 onClick={() => setShowProjForm(!showProjForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
               >
-                <Plus className="w-4 h-4" /> Añadir Proyecto
+                <Plus className="w-4 h-4" /> {t('exp.addProj')}
               </button>
             </div>
 
@@ -356,27 +429,27 @@ export const Experience: React.FC = () => {
               <form onSubmit={handleAddProject} className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Nombre del Proyecto</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.projName')}</label>
                     <input required type="text" value={newProj.name || ''} onChange={e => setNewProj({...newProj, name: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Tu Rol (Opcional)</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.yourRole')}</label>
                     <input type="text" value={newProj.role || ''} onChange={e => setNewProj({...newProj, role: e.target.value})} placeholder="Ej: Lead Developer" className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">URL del Proyecto (Opcional)</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.projUrl')}</label>
                     <input type="url" value={newProj.url || ''} onChange={e => setNewProj({...newProj, url: e.target.value})} placeholder="https://..." className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Ubicación (Ciudad - País)</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.location')}</label>
                     <input type="text" value={newProj.location || ''} onChange={e => setNewProj({...newProj, location: e.target.value})} placeholder="Ej: Remoto / CDMX - México" className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Descripción</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.description')}</label>
                     <textarea required rows={3} value={newProj.description || ''} onChange={e => setNewProj({...newProj, description: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500 resize-none" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Fotos del Proyecto (Máx 3)</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.projPhotos')}</label>
                     <div className="mt-1 flex flex-wrap items-center gap-4">
                       {(() => {
                         const currentImages = newProj.imageUrls || (newProj.imageUrl ? [newProj.imageUrl] : []);
@@ -393,7 +466,7 @@ export const Experience: React.FC = () => {
                             {currentImages.length < 3 && (
                               <label className="cursor-pointer flex items-center justify-center px-4 py-2 border border-zinc-300 rounded-lg shadow-sm text-sm font-medium text-zinc-700 bg-white hover:bg-zinc-50 transition-colors">
                                 <ImageIcon className="w-4 h-4 mr-2 text-zinc-500" />
-                                <span>Subir foto</span>
+                                <span>{t('exp.uploadPhoto')}</span>
                                 <input type="file" accept="image/*" multiple className="hidden" onChange={handleProjectImageUpload} />
                               </label>
                             )}
@@ -404,8 +477,8 @@ export const Experience: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
-                  <button type="button" onClick={() => setShowProjForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">Cancelar</button>
-                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Guardar</button>
+                  <button type="button" onClick={() => setShowProjForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">{t('exp.cancel')}</button>
+                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{t('exp.save')}</button>
                 </div>
               </form>
             )}
@@ -414,8 +487,8 @@ export const Experience: React.FC = () => {
               {projects.length === 0 && !showProjForm && (
                 <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 border-dashed">
                   <FolderGit2 className="mx-auto h-12 w-12 text-zinc-300" />
-                  <h3 className="mt-2 text-sm font-semibold text-zinc-900">Sin proyectos</h3>
-                  <p className="mt-1 text-sm text-zinc-500">Añade los proyectos de los que estés más orgulloso.</p>
+                  <h3 className="mt-2 text-sm font-semibold text-zinc-900">{t('exp.noProj')}</h3>
+                  <p className="mt-1 text-sm text-zinc-500">{t('exp.noProjDesc')}</p>
                 </div>
               )}
               {projects.map((proj) => (
@@ -470,12 +543,12 @@ export const Experience: React.FC = () => {
         {activeTab === 'skills' && (
           <>
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-zinc-900">Habilidades</h2>
+              <h2 className="text-xl font-semibold text-zinc-900">{t('exp.skills')}</h2>
               <button 
                 onClick={() => setShowSkillForm(!showSkillForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
               >
-                <Plus className="w-4 h-4" /> Añadir Habilidad
+                <Plus className="w-4 h-4" /> {t('exp.addSkill')}
               </button>
             </div>
 
@@ -483,21 +556,21 @@ export const Experience: React.FC = () => {
               <form onSubmit={handleAddSkill} className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Habilidad</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.skillName')}</label>
                     <input required type="text" value={newSkill.name || ''} onChange={e => setNewSkill({...newSkill, name: e.target.value})} placeholder="Ej: React, Liderazgo, Figma..." className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Categoría</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">{t('exp.category')}</label>
                     <select required value={newSkill.category || 'technical'} onChange={e => setNewSkill({...newSkill, category: e.target.value as any})} className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500 bg-white">
-                      <option value="technical">Técnica (Hard Skill)</option>
-                      <option value="soft">Blanda (Soft Skill)</option>
-                      <option value="tools">Herramientas / Software</option>
+                      <option value="technical">{t('exp.cat.tech')}</option>
+                      <option value="soft">{t('exp.cat.soft')}</option>
+                      <option value="tools">{t('exp.cat.tools')}</option>
                     </select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
-                  <button type="button" onClick={() => setShowSkillForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">Cancelar</button>
-                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Guardar</button>
+                  <button type="button" onClick={() => setShowSkillForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">{t('exp.cancel')}</button>
+                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">{t('exp.save')}</button>
                 </div>
               </form>
             )}
@@ -539,6 +612,107 @@ export const Experience: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* CERTIFICATES SECTION */}
+            <div className="mt-12">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-zinc-900">Certificados y Títulos</h2>
+                <button 
+                  onClick={() => setShowCertForm(!showCertForm)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> Añadir Documento
+                </button>
+              </div>
+
+              {showCertForm && (
+                <form onSubmit={handleAddCertificate} className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 space-y-4 mb-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Nombre del Certificado/Título</label>
+                      <input required type="text" value={newCert.name || ''} onChange={e => setNewCert({...newCert, name: e.target.value})} placeholder="Ej: Certificación AWS, Título Universitario..." className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Institución Emisora</label>
+                      <input required type="text" value={newCert.issuer || ''} onChange={e => setNewCert({...newCert, issuer: e.target.value})} placeholder="Ej: Universidad, Coursera, AWS..." className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Fecha (Opcional)</label>
+                      <input type="text" value={newCert.date || ''} onChange={e => setNewCert({...newCert, date: e.target.value})} placeholder="Ej: 2023, Octubre 2022..." className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">URL de Verificación (Opcional)</label>
+                      <input type="url" value={newCert.url || ''} onChange={e => setNewCert({...newCert, url: e.target.value})} placeholder="https://..." className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-2">Imagen del Documento (Opcional)</label>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center justify-center w-32 h-24 border-2 border-dashed border-zinc-300 rounded-lg cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors overflow-hidden relative">
+                        {newCert.imageUrl ? (
+                          <img src={newCert.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <ImageIcon className="w-6 h-6 text-zinc-400" />
+                            <span className="text-xs text-zinc-500 mt-1">Subir imagen</span>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" onChange={handleCertImageUpload} className="hidden" />
+                      </label>
+                      {newCert.imageUrl && (
+                        <button type="button" onClick={() => setNewCert({...newCert, imageUrl: undefined})} className="text-sm text-red-600 hover:text-red-700">
+                          Quitar imagen
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
+                    <button type="button" onClick={() => setShowCertForm(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Guardar Documento</button>
+                  </div>
+                </form>
+              )}
+
+              <div className="space-y-4">
+                {certificates.length === 0 && !showCertForm && (
+                  <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200 border-dashed">
+                    <FileText className="mx-auto h-12 w-12 text-zinc-300" />
+                    <h3 className="mt-2 text-sm font-semibold text-zinc-900">Sin certificados</h3>
+                    <p className="mt-1 text-sm text-zinc-500">Añade tus títulos y certificados para respaldar tus habilidades.</p>
+                  </div>
+                )}
+
+                {certificates.map(cert => (
+                  <div key={cert.id} className="group bg-white p-6 rounded-2xl shadow-sm border border-zinc-200 flex justify-between items-start hover:border-indigo-200 transition-colors">
+                    <div className="flex gap-4">
+                      {cert.imageUrl && (
+                        <img 
+                          src={cert.imageUrl} 
+                          alt={cert.name} 
+                          onClick={() => setSelectedImage(cert.imageUrl!)}
+                          className="w-24 h-20 object-cover rounded-lg border border-zinc-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        />
+                      )}
+                      <div>
+                        <h3 className="text-lg font-bold text-zinc-900">{cert.name}</h3>
+                        <p className="text-sm font-medium text-zinc-600 mt-1">{cert.issuer}</p>
+                        {cert.date && <p className="text-sm text-zinc-500 mt-1">{cert.date}</p>}
+                        {cert.url && (
+                          <a href={cert.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 mt-2 font-medium">
+                            <ExternalLink className="w-4 h-4" /> Ver credencial
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <button onClick={() => handleDeleteCertificate(cert.id)} className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 ml-4">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </>
         )}
 
@@ -570,163 +744,26 @@ export const Experience: React.FC = () => {
             </div>
 
             {/* CV Preview Container */}
-            <div className="bg-zinc-200 p-4 sm:p-8 rounded-2xl overflow-x-auto flex justify-center">
-              {/* Actual CV Document */}
-              <div 
-                ref={cvRef}
-                className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-xl p-8 sm:p-12 text-zinc-900 font-sans mx-auto"
-                style={{
-                  boxSizing: 'border-box'
-                }}
-              >
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 border-b border-zinc-200 pb-8 mb-8">
-                  {profile.avatarUrl && (
-                    <img 
-                      src={profile.avatarUrl} 
-                      alt={profile.fullName} 
-                      className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-zinc-100"
-                    />
-                  )}
-                  <div className="flex-1 text-center sm:text-left">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-2">{profile.fullName || 'Tu Nombre'}</h1>
-                    <h2 className="text-xl text-indigo-600 font-medium mb-4">{profile.title || 'Tu Cargo'}</h2>
-                    
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm text-zinc-600">
-                      {profile.email && (
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-4 h-4" /> {profile.email}
-                        </div>
-                      )}
-                      {profile.phone && (
-                        <div className="flex items-center gap-1.5">
-                          <Phone className="w-4 h-4" /> {profile.phone}
-                        </div>
-                      )}
-                      {profile.location && (
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-4 h-4" /> {profile.location}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+            <div className="bg-zinc-200 p-4 sm:p-8 rounded-2xl overflow-x-auto flex justify-center relative">
+              <DossierView 
+                profile={profile}
+                experiences={experiences}
+                projects={projects}
+                skills={skills}
+                certificates={certificates}
+              />
 
-                {/* Bio */}
-                {profile.bio && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-wider mb-3 border-b border-zinc-200 pb-2">Perfil Profesional</h3>
-                    <p className="text-sm leading-relaxed text-zinc-700 whitespace-pre-wrap">{profile.bio}</p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {/* Left Column (Main Content) */}
-                  <div className="md:col-span-2 space-y-8">
-                    {/* Experience */}
-                    {experiences.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-wider mb-4 border-b border-zinc-200 pb-2">Experiencia</h3>
-                        <div className="space-y-6">
-                          {experiences.map(exp => (
-                            <div key={exp.id}>
-                              <div className="flex justify-between items-baseline mb-1">
-                                <h4 className="text-base font-bold text-zinc-900">{exp.role}</h4>
-                                <span className="text-sm font-medium text-indigo-600 whitespace-nowrap ml-4">
-                                  {exp.startDate} - {exp.current ? 'Presente' : exp.endDate}
-                                </span>
-                              </div>
-                              <div className="text-sm font-medium text-zinc-700 mb-2">
-                                {exp.company} {exp.location && <span className="text-zinc-500 font-normal">| {exp.location}</span>}
-                              </div>
-                              {exp.description && (
-                                <p className="text-sm text-zinc-600 whitespace-pre-wrap leading-relaxed">{exp.description}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Projects */}
-                    {projects.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-wider mb-4 border-b border-zinc-200 pb-2">Proyectos</h3>
-                        <div className="space-y-6">
-                          {projects.map(proj => (
-                            <div key={proj.id}>
-                              <div className="flex justify-between items-baseline mb-1">
-                                <h4 className="text-base font-bold text-zinc-900">{proj.name}</h4>
-                                {proj.url && (
-                                  <a href={proj.url} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline ml-4">
-                                    Ver Proyecto
-                                  </a>
-                                )}
-                              </div>
-                              {proj.role && (
-                                <div className="text-sm font-medium text-zinc-700 mb-2">
-                                  {proj.role}
-                                </div>
-                              )}
-                              <p className="text-sm text-zinc-600 whitespace-pre-wrap leading-relaxed">{proj.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Column (Sidebar) */}
-                  <div className="space-y-8">
-                    {/* Skills */}
-                    {skills.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-wider mb-4 border-b border-zinc-200 pb-2">Habilidades</h3>
-                        
-                        {['technical', 'soft', 'tools'].map(category => {
-                          const catSkills = skills.filter(s => s.category === category);
-                          if (catSkills.length === 0) return null;
-                          
-                          const catNames = {
-                            technical: 'Técnicas',
-                            soft: 'Blandas',
-                            tools: 'Herramientas'
-                          };
-
-                          return (
-                            <div key={category} className="mb-4 last:mb-0">
-                              <h4 className="text-sm font-bold text-zinc-800 mb-2">{catNames[category as keyof typeof catNames]}</h4>
-                              <ul className="list-disc list-inside text-sm text-zinc-600 space-y-1">
-                                {catSkills.map(skill => (
-                                  <li key={skill.id}>{skill.name}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Social Links */}
-                    {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
-                      <div>
-                        <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-wider mb-4 border-b border-zinc-200 pb-2">Enlaces</h3>
-                        <ul className="space-y-2 text-sm text-zinc-600">
-                          {Object.entries(profile.socialLinks).map(([network, url]) => {
-                            if (!url) return null;
-                            return (
-                              <li key={network} className="flex items-center gap-2">
-                                <span className="capitalize font-medium text-zinc-800">{network}:</span>
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate">
-                                  {url.replace(/^https?:\/\/(www\.)?/, '')}
-                                </a>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+              {/* Hidden CV Document for PDF */}
+              <div className="absolute top-[-9999px] left-[-9999px] opacity-0 pointer-events-none">
+                <div ref={cvRef}>
+                  <DossierView 
+                    profile={profile}
+                    experiences={experiences}
+                    projects={projects}
+                    skills={skills}
+                    certificates={certificates}
+                    isPrint={true}
+                  />
                 </div>
               </div>
             </div>

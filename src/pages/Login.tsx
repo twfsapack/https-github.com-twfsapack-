@@ -3,8 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Wand2 } from 'lucide-react';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 export const Login: React.FC = () => {
   const { user, signInWithGoogle } = useAuth();
+  const { t } = useLanguage();
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -19,10 +22,10 @@ export const Login: React.FC = () => {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-zinc-900 tracking-tight">
-          Digital Card Pro
+          {t('appTitle')}
         </h2>
         <p className="mt-2 text-center text-sm text-zinc-600">
-          Crea tu tarjeta digital y CV interactivo con IA
+          {t('appSubtitle')}
         </p>
       </div>
 
@@ -32,7 +35,7 @@ export const Login: React.FC = () => {
             onClick={signInWithGoogle}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
-            Continuar con Google
+            {t('continueWithGoogle')}
           </button>
         </div>
       </div>

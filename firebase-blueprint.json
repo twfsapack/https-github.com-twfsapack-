@@ -24,6 +24,16 @@
             "skype": { "type": "string" }
           }
         },
+        "studio": {
+          "type": "object",
+          "properties": {
+            "orientation": { "type": "string", "enum": ["horizontal", "vertical"] },
+            "textAlign": { "type": "string", "enum": ["left", "center", "right"] },
+            "bgColor": { "type": "string" },
+            "customBgImage": { "type": "string" },
+            "generatedImage": { "type": "string" }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -78,6 +88,22 @@
       },
       "required": ["userId", "name", "category"]
     },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Certificados y Títulos del usuario",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "issuer": { "type": "string" },
+        "date": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "url": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["userId", "name", "issuer"]
+    },
     "CardDesign": {
       "title": "CardDesign",
       "description": "ConfiguraciÃ³n visual de la tarjeta generada por IA",
@@ -116,6 +142,10 @@
     "/profiles/{userId}/skills/{skillId}": {
       "schema": { "$ref": "#/entities/Skill" },
       "description": "Habilidades pÃºblicas"
+    },
+    "/profiles/{userId}/certificates/{certificateId}": {
+      "schema": { "$ref": "#/entities/Certificate" },
+      "description": "Certificados y Títulos pÃºblicos"
     },
     "/profiles/{userId}/cardDesign/current": {
       "schema": { "$ref": "#/entities/CardDesign" },

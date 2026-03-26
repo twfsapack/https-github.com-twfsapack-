@@ -8,6 +8,9 @@ import { Studio } from './pages/Studio';
 import { Profile } from './pages/Profile';
 import { Experience } from './pages/Experience';
 import { PublicCV } from './pages/PublicCV';
+import { Portfolio } from './pages/Portfolio';
+import { PublicCard } from './pages/PublicCard';
+import { Share } from './pages/Share';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -19,6 +22,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 export default function App() {
+  React.useEffect(() => {
+    const theme = localStorage.getItem('theme') || 'light';
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -35,11 +47,13 @@ export default function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="experience" element={<Experience />} />
             <Route path="studio" element={<Studio />} />
-            <Route path="share" element={<div className="p-8">Compartir (En construcción)</div>} />
+            <Route path="share" element={<Share />} />
           </Route>
           
-          {/* Public Route for CV */}
+          {/* Public Routes */}
           <Route path="/cv/:userId" element={<PublicCV />} />
+          <Route path="/portfolio/:userId" element={<Portfolio />} />
+          <Route path="/card/:userId" element={<PublicCard />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

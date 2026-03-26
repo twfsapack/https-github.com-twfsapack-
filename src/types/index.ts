@@ -24,6 +24,13 @@ export interface Profile {
   };
   createdAt: string;
   updatedAt: string;
+  studio?: {
+    orientation?: 'horizontal' | 'vertical';
+    textAlign?: 'left' | 'center' | 'right';
+    bgColor?: string;
+    customBgImage?: string | null;
+    generatedImage?: string | null;
+  };
 }
 
 export interface Experience {
@@ -57,6 +64,17 @@ export interface Skill {
   userId: string;
   name: string;
   category: 'technical' | 'soft' | 'tools';
+  order?: number;
+}
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  name: string;
+  issuer: string;
+  date?: string;
+  imageUrl?: string;
+  url?: string;
   order?: number;
 }
 

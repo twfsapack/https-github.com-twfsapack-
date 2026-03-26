@@ -57,6 +57,17 @@ service cloud.firestore {
     //   - category: string (required, in ['technical', 'soft', 'tools'])
     //   - order: number (optional)
     //
+    // Collection: profiles/{userId}/certificates
+    // Document ID: {certificateId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - name: string (required, max 100)
+    //   - issuer: string (required, max 100)
+    //   - date: string (optional, max 50)
+    //   - imageUrl: string (optional, url)
+    //   - url: string (optional, url)
+    //   - order: number (optional)
+    //
     // Collection: profiles/{userId}/cardDesign
     // Document ID: current
     // Fields:
@@ -147,7 +158,7 @@ service cloud.firestore {
     }
 
     function isValidProfile() {
-      return hasOnlyAllowedFields(['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'createdAt', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'studio', 'createdAt', 'updatedAt']) &&
              validStringLength('uid', 1, 100) &&
              isValidOptionalString('fullName', 0, 100) &&
              isValidOptionalString('title', 0, 100) &&
@@ -158,6 +169,7 @@ service cloud.firestore {
              isValidOptionalUrl('avatarUrl') &&
              (!( 'socialLinks' in request.resource.data ) || request.resource.data.socialLinks is map) &&
              (!( 'allowPdfDownload' in request.resource.data ) || request.resource.data.allowPdfDownload is bool) &&
+             (!( 'studio' in request.resource.data ) || request.resource.data.studio is map) &&
              isValidDateString(request.resource.data.createdAt) &&
              isValidDateString(request.resource.data.updatedAt);
     }
@@ -193,6 +205,17 @@ service cloud.firestore {
              validStringLength('userId', 1, 100) &&
              validStringLength('name', 1, 50) &&
              request.resource.data.category in ['technical', 'soft', 'tools'] &&
+             (!( 'order' in request.resource.data ) || request.resource.data.order is number);
+    }
+
+    function isValidCertificate() {
+      return hasOnlyAllowedFields(['userId', 'name', 'issuer', 'date', 'imageUrl', 'url', 'order']) &&
+             validStringLength('userId', 1, 100) &&
+             validStringLength('name', 1, 100) &&
+             validStringLength('issuer', 1, 100) &&
+             isValidOptionalString('date', 0, 50) &&
+             isValidOptionalUrl('imageUrl') &&
+             isValidOptionalUrl('url') &&
              (!( 'order' in request.resource.data ) || request.resource.data.order is number);
     }
 
@@ -247,6 +270,13 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isOwner(userId) && isValidSkill() && userIdUnchanged();
         allow update: if isOwner(userId) && isValidSkill() && userIdNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      match /certificates/{certificateId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidCertificate() && userIdUnchanged();
+        allow update: if isOwner(userId) && isValidCertificate() && userIdNotModified();
         allow delete: if isOwner(userId);
       }
 
