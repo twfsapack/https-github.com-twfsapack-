@@ -34,6 +34,7 @@
             "generatedImage": { "type": "string" }
           }
         },
+        "isPremium": { "type": "boolean", "description": "Indica si el usuario tiene la versión Freemium activada" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

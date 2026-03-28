@@ -158,7 +158,7 @@ service cloud.firestore {
     }
 
     function isValidProfile() {
-      return hasOnlyAllowedFields(['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'studio', 'createdAt', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'studio', 'isPremium', 'createdAt', 'updatedAt']) &&
              validStringLength('uid', 1, 100) &&
              isValidOptionalString('fullName', 0, 100) &&
              isValidOptionalString('title', 0, 100) &&
@@ -170,6 +170,7 @@ service cloud.firestore {
              (!( 'socialLinks' in request.resource.data ) || request.resource.data.socialLinks is map) &&
              (!( 'allowPdfDownload' in request.resource.data ) || request.resource.data.allowPdfDownload is bool) &&
              (!( 'studio' in request.resource.data ) || request.resource.data.studio is map) &&
+             (!( 'isPremium' in request.resource.data ) || request.resource.data.isPremium is bool) &&
              isValidDateString(request.resource.data.createdAt) &&
              isValidDateString(request.resource.data.updatedAt);
     }

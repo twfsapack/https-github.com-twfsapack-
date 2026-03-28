@@ -7,6 +7,7 @@ import { FaGithub, FaLinkedin, FaGlobe, FaTelegramPlane, FaSkype, FaPhoneAlt, Fa
 import { FaXTwitter } from 'react-icons/fa6';
 import { Profile as ProfileType, Experience as ExperienceType, Project as ProjectType, Skill as SkillType } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { AIAssistant } from '../components/AIAssistant';
 
 export const Portfolio: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -300,6 +301,7 @@ export const Portfolio: React.FC = () => {
           </p>
         </div>
       </footer>
+      {userId && <AIAssistant userId={userId} />}
     </div>
   );
 };

@@ -234,6 +234,19 @@ export const Profile: React.FC = () => {
                 />
               </div>
             </div>
+            
+            <div className="sm:col-span-2 flex items-center gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+              <input
+                type="checkbox"
+                id="isPremium"
+                checked={profile.isPremium || false}
+                onChange={(e) => setProfile({ ...profile, isPremium: e.target.checked })}
+                className="w-5 h-5 text-indigo-600 rounded border-zinc-300 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800"
+              />
+              <label htmlFor="isPremium" className="text-sm font-medium text-indigo-900 dark:text-indigo-200 cursor-pointer">
+                Activar versión Freemium (Asistente IA en tu tarjeta pública)
+              </label>
+            </div>
           </div>
 
           <div>

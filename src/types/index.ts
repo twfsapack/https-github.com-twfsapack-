@@ -14,6 +14,7 @@ export interface Profile {
   email?: string;
   location?: string;
   allowPdfDownload?: boolean;
+  isPremium?: boolean;
   socialLinks?: {
     linkedin?: string;
     twitter?: string;

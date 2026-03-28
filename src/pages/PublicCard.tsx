@@ -7,6 +7,7 @@ import { FaPhoneAlt, FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaFileAlt, FaLinked
 import { FaXTwitter } from 'react-icons/fa6';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../components/Layout';
+import { AIAssistant } from '../components/AIAssistant';
 
 export const PublicCard: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -278,6 +279,7 @@ END:VCARD`;
           </div>
         </div>
       </div>
+      {userId && <AIAssistant userId={userId} />}
     </div>
   );
 };
