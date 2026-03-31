@@ -121,8 +121,8 @@ END:VCARD`;
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 sm:p-8">
       <div 
         className={cn(
-          "w-full min-h-[100dvh] sm:min-h-0 sm:h-auto flex flex-col items-center justify-center text-white p-6 sm:p-14 relative overflow-hidden shadow-2xl sm:border border-zinc-800",
-          orientation === 'horizontal' ? "sm:aspect-[16/9] max-w-[920px] sm:rounded-3xl" : "sm:aspect-[9/16] max-w-[460px] sm:rounded-[2.2rem]",
+          "w-full min-h-[100dvh] sm:min-h-0 sm:h-auto flex flex-col items-center justify-center text-white p-4 sm:p-14 relative overflow-hidden shadow-2xl sm:border border-zinc-800",
+          orientation === 'horizontal' ? "aspect-[16/9] sm:aspect-[16/9] max-w-[920px] rounded-2xl sm:rounded-3xl" : "aspect-[9/16] sm:aspect-[9/16] max-w-[460px] rounded-[1.5rem] sm:rounded-[2.2rem]",
           showQR ? "bg-white" : ""
         )}
         style={!showQR ? { backgroundColor: bgColor } : undefined}
@@ -167,7 +167,7 @@ END:VCARD`;
             
             {/* Overlay Content */}
             <div className={cn(
-              "relative z-10 flex flex-col justify-center w-full max-w-full px-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]",
+              "relative z-10 flex flex-col justify-center w-full max-w-full px-2 sm:px-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]",
               textAlign === 'left' ? "items-start" : textAlign === 'right' ? "items-end" : "items-center"
             )}>
               {profile.avatarUrl ? (
