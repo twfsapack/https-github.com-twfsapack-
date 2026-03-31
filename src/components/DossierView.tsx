@@ -2,7 +2,7 @@ import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaLinkedin, FaGithub, FaGlobe, FaTelegramPlane, FaSkype } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
-import { Profile, Experience, Project, Skill, Certificate } from '../types';
+import { Profile, Experience, Project, Skill, Certificate, Education } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DossierViewProps {
@@ -11,7 +11,9 @@ interface DossierViewProps {
   projects: Project[];
   skills: Skill[];
   certificates?: Certificate[];
+  educations?: Education[];
   isPrint?: boolean;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
 }
 
 const ElegantSeparator = () => (
@@ -22,7 +24,7 @@ const ElegantSeparator = () => (
   </div>
 );
 
-export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, projects, skills, certificates = [], isPrint = false }) => {
+export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, projects, skills, certificates = [], educations = [], isPrint = false, textAlign = 'center' }) => {
   const { t } = useLanguage();
 
   return (
@@ -30,11 +32,11 @@ export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, 
       className={`bg-white text-zinc-900 font-sans mx-auto ${
         isPrint 
           ? 'w-[210mm] min-h-[297mm] p-[20mm]' 
-          : 'w-full max-w-[210mm] h-[800px] overflow-y-auto p-8 sm:p-12 rounded-xl shadow-2xl relative'
+          : 'w-full max-w-[210mm] min-h-[297mm] p-8 sm:p-12 rounded-xl shadow-xl relative ring-1 ring-zinc-200/50'
       }`}
     >
       {/* Header */}
-      <div className="flex flex-col items-center text-center mb-8">
+      <div className={`flex flex-col mb-8 ${textAlign === 'left' ? 'items-start text-left' : textAlign === 'right' ? 'items-end text-right' : 'items-center text-center'}`}>
         {profile.avatarUrl && (
           <img 
             src={profile.avatarUrl} 
@@ -50,7 +52,7 @@ export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, 
         </h2>
         
         {profile.bio && (
-          <p className="text-sm sm:text-base text-zinc-700 max-w-2xl mx-auto leading-relaxed mb-8">
+          <p className="text-sm sm:text-base text-zinc-700 max-w-2xl mx-auto leading-relaxed mb-8 text-justify">
             {profile.bio}
           </p>
         )}
@@ -87,6 +89,38 @@ export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, 
         )}
       </div>
 
+      {educations.length > 0 && (
+        <>
+          <ElegantSeparator />
+          <div className="mb-8">
+            <h3 className="text-2xl font-serif text-zinc-900 uppercase tracking-widest mb-8 text-center">{t('exp.education')}</h3>
+            <div className="space-y-10">
+              {educations.map(edu => (
+                <div key={edu.id} className="relative">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-4 border-b border-zinc-200 pb-2">
+                    <h4 className="text-lg font-bold text-zinc-900 uppercase tracking-wide">{edu.degree}</h4>
+                    <span className="text-sm font-serif italic text-zinc-500 mt-1 sm:mt-0">
+                      {edu.startDate} - {edu.current ? t('present') : edu.endDate}
+                    </span>
+                  </div>
+                  <div className="text-sm text-zinc-700 space-y-3">
+                    <p><span className="font-bold text-zinc-900 uppercase text-xs tracking-wider mr-2">{t('exp.institution')}:</span> {edu.institution}</p>
+                    {edu.fieldOfStudy && <p><span className="font-bold text-zinc-900 uppercase text-xs tracking-wider mr-2">{t('exp.fieldOfStudy')}:</span> {edu.fieldOfStudy}</p>}
+                    {edu.location && <p><span className="font-bold text-zinc-900 uppercase text-xs tracking-wider mr-2">{t('location')}:</span> {edu.location}</p>}
+                    {edu.description && (
+                      <div className="mt-4">
+                        <span className="font-bold text-zinc-900 uppercase text-xs tracking-wider block mb-1.5">{t('description')}:</span>
+                        <p className="whitespace-pre-wrap leading-relaxed text-justify">{edu.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       {experiences.length > 0 && (
         <>
           <ElegantSeparator />
@@ -107,7 +141,7 @@ export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, 
                     {exp.description && (
                       <div className="mt-4">
                         <span className="font-bold text-zinc-900 uppercase text-xs tracking-wider block mb-1.5">{t('description')}:</span>
-                        <p className="whitespace-pre-wrap leading-relaxed">{exp.description}</p>
+                        <p className="whitespace-pre-wrap leading-relaxed text-justify">{exp.description}</p>
                       </div>
                     )}
                   </div>
@@ -139,7 +173,7 @@ export const DossierView: React.FC<DossierViewProps> = ({ profile, experiences, 
                     {proj.description && (
                       <div className="mt-4">
                         <span className="font-bold text-zinc-900 uppercase text-xs tracking-wider block mb-1.5">{t('description')}:</span>
-                        <p className="whitespace-pre-wrap leading-relaxed">{proj.description}</p>
+                        <p className="whitespace-pre-wrap leading-relaxed text-justify">{proj.description}</p>
                       </div>
                     )}
                   </div>

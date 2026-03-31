@@ -5,7 +5,7 @@ import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { ExternalLink, Briefcase, FolderGit2, GraduationCap, Loader2 } from 'lucide-react';
 import { FaGithub, FaLinkedin, FaGlobe, FaTelegramPlane, FaSkype, FaPhoneAlt, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
-import { Profile as ProfileType, Experience as ExperienceType, Project as ProjectType, Skill as SkillType } from '../types';
+import { Profile as ProfileType, Experience as ExperienceType, Project as ProjectType, Skill as SkillType, Education as EducationType } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { AIAssistant } from '../components/AIAssistant';
 
@@ -20,6 +20,7 @@ export const Portfolio: React.FC = () => {
   const [experiences, setExperiences] = useState<ExperienceType[]>([]);
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const [skills, setSkills] = useState<SkillType[]>([]);
+  const [educations, setEducations] = useState<EducationType[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,13 +41,16 @@ export const Portfolio: React.FC = () => {
         }
 
         const expSnap = await getDocs(collection(db, `profiles/${userId}/experiences`));
-        setExperiences(expSnap.docs.map(d => ({ id: d.id, ...d.data() } as ExperienceType)).sort((a, b) => (b.order || 0) - (a.order || 0)));
+        setExperiences(expSnap.docs.map(d => ({ id: d.id, ...d.data() } as ExperienceType)).sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '')));
 
         const projSnap = await getDocs(collection(db, `profiles/${userId}/projects`));
         setProjects(projSnap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectType)).sort((a, b) => (b.order || 0) - (a.order || 0)));
 
         const skillSnap = await getDocs(collection(db, `profiles/${userId}/skills`));
         setSkills(skillSnap.docs.map(d => ({ id: d.id, ...d.data() } as SkillType)));
+
+        const eduSnap = await getDocs(collection(db, `profiles/${userId}/educations`));
+        setEducations(eduSnap.docs.map(d => ({ id: d.id, ...d.data() } as EducationType)).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')));
       } catch (err) {
         console.error("Error fetching Portfolio data:", err);
         setError(t('errorLoadingPortfolio'));
@@ -193,6 +197,48 @@ export const Portfolio: React.FC = () => {
                       </div>
                       {exp.description && (
                         <p className="text-zinc-600 leading-relaxed whitespace-pre-wrap">{exp.description}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Education Section */}
+        {educations.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-10">
+              <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-bold text-zinc-900">{t('exp.education')}</h3>
+            </div>
+            
+            <div className="space-y-12">
+              {educations.map((edu, index) => (
+                <div key={edu.id} className="relative pl-8 md:pl-0">
+                  {/* Timeline Line for Mobile */}
+                  <div className="md:hidden absolute left-0 top-2 bottom-[-3rem] w-px bg-zinc-200 last:hidden"></div>
+                  <div className="md:hidden absolute left-[-4px] top-2 w-2 h-2 rounded-full bg-indigo-600 ring-4 ring-zinc-50"></div>
+
+                  <div className="md:grid md:grid-cols-4 md:gap-8 items-start">
+                    <div className="md:col-span-1 mb-2 md:mb-0 md:text-right pt-1">
+                      <span className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
+                        {edu.startDate} — {edu.current ? t('present') : edu.endDate}
+                      </span>
+                    </div>
+                    <div className="md:col-span-3 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-zinc-100 hover:shadow-md transition-shadow">
+                      <h4 className="text-xl font-bold text-zinc-900 mb-1">{edu.degree}</h4>
+                      <div className="text-indigo-600 font-medium mb-4">
+                        {edu.institution} {edu.location && <span className="text-zinc-400 font-normal"> • {edu.location}</span>}
+                      </div>
+                      {edu.fieldOfStudy && (
+                        <p className="text-zinc-700 font-medium mb-2">{t('exp.fieldOfStudy')}: <span className="font-normal">{edu.fieldOfStudy}</span></p>
+                      )}
+                      {edu.description && (
+                        <p className="text-zinc-600 leading-relaxed whitespace-pre-wrap">{edu.description}</p>
                       )}
                     </div>
                   </div>

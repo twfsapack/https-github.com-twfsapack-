@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { User, Briefcase, Download, Loader2 } from 'lucide-react';
+import { User, Briefcase, Download, Loader2, Share2 } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { FaPhoneAlt, FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaFileAlt, FaLinkedin, FaGithub, FaGlobe, FaTelegramPlane, FaSkype } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -14,6 +15,7 @@ export const PublicCard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [showQR, setShowQR] = useState(false);
 
   const { t } = useLanguage();
 
@@ -92,31 +94,89 @@ END:VCARD`;
   const customBgImage = studio.customBgImage || '';
   const generatedImage = studio.generatedImage || '';
 
+  const bumpFontSizeForDesktop = (sizeClass: string) => {
+    const map: Record<string, string> = {
+      'sm:text-sm': 'sm:text-base',
+      'sm:text-base': 'sm:text-lg',
+      'sm:text-lg': 'sm:text-xl',
+      'sm:text-xl': 'sm:text-2xl',
+      'sm:text-2xl': 'sm:text-3xl',
+      'sm:text-3xl': 'sm:text-4xl',
+      'sm:text-4xl': 'sm:text-5xl',
+      'lg:text-base': 'lg:text-lg',
+      'lg:text-lg': 'lg:text-xl',
+      'lg:text-xl': 'lg:text-2xl',
+      'lg:text-2xl': 'lg:text-3xl',
+      'lg:text-3xl': 'lg:text-4xl',
+      'lg:text-4xl': 'lg:text-5xl',
+      'lg:text-5xl': 'lg:text-6xl',
+    };
+    return sizeClass.split(' ').map(cls => map[cls] || cls).join(' ');
+  };
+
+  const headerFontSize = bumpFontSizeForDesktop(studio.headerFontSize || 'text-xl sm:text-2xl lg:text-3xl');
+  const bodyFontSize = bumpFontSizeForDesktop(studio.bodyFontSize || 'text-sm sm:text-base lg:text-lg');
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 sm:p-8">
       <div 
         className={cn(
-          "w-full h-screen sm:h-auto flex flex-col items-center justify-center text-white p-6 sm:p-12 relative overflow-hidden shadow-2xl sm:border border-zinc-800",
-          orientation === 'horizontal' ? "sm:aspect-[16/9] max-w-3xl sm:rounded-3xl" : "sm:aspect-[9/16] max-w-sm sm:rounded-[2.2rem]"
+          "w-full min-h-[100dvh] sm:min-h-0 sm:h-auto flex flex-col items-center justify-center text-white p-6 sm:p-14 relative overflow-hidden shadow-2xl sm:border border-zinc-800",
+          orientation === 'horizontal' ? "sm:aspect-[16/9] max-w-[920px] sm:rounded-3xl" : "sm:aspect-[9/16] max-w-[460px] sm:rounded-[2.2rem]",
+          showQR ? "bg-white" : ""
         )}
-        style={{ backgroundColor: bgColor }}
+        style={!showQR ? { backgroundColor: bgColor } : undefined}
       >
-        {(generatedImage || customBgImage) && (
-          <img src={generatedImage || customBgImage} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0" />
-        )}
-        
-        {/* Overlay Content */}
-        <div className={cn(
-          "relative z-10 flex flex-col justify-center w-full max-w-full px-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]",
-          textAlign === 'left' ? "items-start" : textAlign === 'right' ? "items-end" : "items-center"
-        )}>
-          {profile.avatarUrl ? (
-            <img src={profile.avatarUrl} alt="Avatar" className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-2 border-white/30 mb-6 shadow-xl" />
-          ) : (
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white/30 mb-6 shadow-xl flex items-center justify-center">
-              <User className="w-12 h-12 text-white/50" />
-            </div>
+        {/* Share Button */}
+        <button
+          onClick={() => setShowQR(!showQR)}
+          className={cn(
+            "absolute top-4 right-4 z-50 p-2 rounded-full backdrop-blur-md transition-all",
+            showQR ? "bg-zinc-100 text-zinc-900 hover:bg-zinc-200" : "bg-black/20 text-white hover:bg-black/40"
           )}
+          title={t('studio.shareCard')}
+        >
+          <Share2 className="w-5 h-5" />
+        </button>
+
+        {showQR ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 bg-white">
+            <div className={cn(
+              "bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm border border-zinc-200",
+              orientation === 'horizontal' ? "w-32 sm:w-40 md:w-48" : "w-48 sm:w-56 md:w-64"
+            )}>
+              <QRCode 
+                value={`${window.location.origin}/card/${userId}`}
+                size={256}
+                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                level="H"
+              />
+            </div>
+            <p className={cn(
+              "text-zinc-800 font-medium text-center",
+              orientation === 'horizontal' ? "mt-4 text-sm" : "mt-6 text-base"
+            )}>
+              {t('studio.scanQR')}
+            </p>
+          </div>
+        ) : (
+          <>
+            {(generatedImage || customBgImage) && (
+              <img src={generatedImage || customBgImage} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0" />
+            )}
+            
+            {/* Overlay Content */}
+            <div className={cn(
+              "relative z-10 flex flex-col justify-center w-full max-w-full px-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]",
+              textAlign === 'left' ? "items-start" : textAlign === 'right' ? "items-end" : "items-center"
+            )}>
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Avatar" className={cn("w-24 h-24 sm:w-40 sm:h-40 rounded-full object-cover border-2 border-white/30 mb-6 shadow-xl", textAlign === 'left' ? "self-start" : textAlign === 'right' ? "self-end" : "self-center")} />
+              ) : (
+                <div className={cn("w-24 h-24 sm:w-40 sm:h-40 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white/30 mb-6 shadow-xl flex items-center justify-center", textAlign === 'left' ? "self-start" : textAlign === 'right' ? "self-end" : "self-center")}>
+                  <User className="w-12 h-12 sm:w-16 sm:h-16 text-white/50" />
+                </div>
+              )}
       
           <div className={cn(
             "flex flex-col gap-3 sm:gap-4 w-full",
@@ -126,9 +186,10 @@ END:VCARD`;
               "flex items-center gap-2 w-full max-w-full",
               textAlign === 'left' ? "justify-start" : textAlign === 'right' ? "justify-end" : "justify-center"
             )}>
-              <User className="w-6 h-6 shrink-0 text-white/80" />
+              <User className="w-6 h-6 sm:w-8 sm:h-8 shrink-0 text-white/80" />
               <h1 className={cn(
-                "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight truncate whitespace-nowrap",
+                headerFontSize,
+                "font-bold tracking-tight break-words min-w-0",
                 textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
               )}>
                 {profile.fullName || t('yourName')}
@@ -139,8 +200,12 @@ END:VCARD`;
               "flex items-center gap-2 w-full max-w-full",
               textAlign === 'left' ? "justify-start" : textAlign === 'right' ? "justify-end" : "justify-center"
             )}>
-              <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white/80" />
-              <p className="text-base sm:text-lg lg:text-xl text-white/90 truncate whitespace-nowrap">
+              <Briefcase className="w-5 h-5 sm:w-7 sm:h-7 shrink-0 text-white/80" />
+              <p className={cn(
+                bodyFontSize, 
+                "text-white/90 break-words min-w-0",
+                textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+              )}>
                 {profile.title || t('yourTitle')}
               </p>
             </div>
@@ -151,21 +216,25 @@ END:VCARD`;
             )}>
               <a 
                 href={`tel:${profile.phone?.replace(/\D/g, '')}`} 
-                className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                className="hover:scale-110 transition-transform p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                 title={t('call')}
               >
-                <FaPhoneAlt className="w-5 h-5 sm:w-5 sm:h-5 shrink-0 text-white" />
+                <FaPhoneAlt className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white" />
               </a>
               <a 
                 href={`https://wa.me/${profile.phone?.replace(/\D/g, '')}`} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                className="hover:scale-110 transition-transform p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                 title={t('whatsapp')}
               >
-                <FaWhatsapp className="w-5 h-5 sm:w-5 sm:h-5 shrink-0 text-white" />
+                <FaWhatsapp className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white" />
               </a>
-              <p className="text-base sm:text-lg lg:text-xl text-white/90 truncate whitespace-nowrap ml-1">
+              <p className={cn(
+                bodyFontSize, 
+                "text-white/90 break-words min-w-0 ml-1",
+                textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+              )}>
                 {profile.phone || t('yourPhone')}
               </p>
             </div>
@@ -176,12 +245,16 @@ END:VCARD`;
             )}>
               <a 
                 href={`mailto:${profile.email}`} 
-                className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                className="hover:scale-110 transition-transform p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                 title={t('sendEmail')}
               >
-                <FaEnvelope className="w-5 h-5 sm:w-5 sm:h-5 shrink-0 text-white" />
+                <FaEnvelope className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white" />
               </a>
-              <p className="text-base sm:text-lg lg:text-xl text-white/90 truncate whitespace-nowrap ml-1">
+              <p className={cn(
+                bodyFontSize, 
+                "text-white/90 break-words min-w-0 ml-1",
+                textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+              )}>
                 {profile.email || 'tu@email.com'}
               </p>
             </div>
@@ -195,12 +268,16 @@ END:VCARD`;
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.location)}`} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                  className="hover:scale-110 transition-transform p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                   title={t('viewOnMap')}
                 >
-                  <FaMapMarkerAlt className="w-5 h-5 sm:w-5 sm:h-5 shrink-0 text-white" />
+                  <FaMapMarkerAlt className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white" />
                 </a>
-                <p className="text-base sm:text-lg lg:text-xl text-white/90 truncate whitespace-nowrap ml-1">
+                <p className={cn(
+                  bodyFontSize, 
+                  "text-white/90 break-words min-w-0 ml-1",
+                  textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+                )}>
                   {profile.location}
                 </p>
               </div>
@@ -214,12 +291,16 @@ END:VCARD`;
                 href={`/cv/${userId}`} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                className="hover:scale-110 transition-transform p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                 title={t('viewCV')}
               >
-                <FaFileAlt className="w-5 h-5 sm:w-5 sm:h-5 shrink-0 text-white" />
+                <FaFileAlt className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white" />
               </a>
-              <p className="text-base sm:text-lg lg:text-xl text-white/90 truncate whitespace-nowrap ml-1">
+              <p className={cn(
+                bodyFontSize, 
+                "text-white/90 break-words min-w-0 ml-1",
+                textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+              )}>
                 {t('myCV')}
               </p>
             </div>
@@ -231,33 +312,33 @@ END:VCARD`;
                 textAlign === 'left' ? "justify-start" : textAlign === 'right' ? "justify-end" : "justify-center"
               )}>
                 {profile.socialLinks.linkedin && (
-                  <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="LinkedIn">
-                    <FaLinkedin className="w-5 h-5 text-white" />
+                  <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="LinkedIn">
+                    <FaLinkedin className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </a>
                 )}
                 {profile.socialLinks.github && (
-                  <a href={profile.socialLinks.github} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="GitHub">
-                    <FaGithub className="w-5 h-5 text-white" />
+                  <a href={profile.socialLinks.github} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="GitHub">
+                    <FaGithub className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </a>
                 )}
                 {profile.socialLinks.twitter && (
-                  <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Twitter / X">
-                    <FaXTwitter className="w-5 h-5 text-white" />
+                  <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Twitter / X">
+                    <FaXTwitter className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </a>
                 )}
                 {profile.socialLinks.website && (
-                  <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title={t('website')}>
-                    <FaGlobe className="w-5 h-5 text-white" />
+                  <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title={t('website')}>
+                    <FaGlobe className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </a>
                 )}
                 {profile.socialLinks.telegram && (
-                  <a href={profile.socialLinks.telegram.startsWith('http') ? profile.socialLinks.telegram : `https://t.me/${profile.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Telegram">
-                    <FaTelegramPlane className="w-5 h-5 text-white" />
+                  <a href={profile.socialLinks.telegram.startsWith('http') ? profile.socialLinks.telegram : `https://t.me/${profile.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Telegram">
+                    <FaTelegramPlane className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </a>
                 )}
                 {profile.socialLinks.skype && (
-                  <a href={`skype:${profile.socialLinks.skype}?chat`} className="hover:scale-110 transition-transform p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Skype">
-                    <FaSkype className="w-5 h-5 text-white" />
+                  <a href={`skype:${profile.socialLinks.skype}?chat`} className="hover:scale-110 transition-transform p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Skype">
+                    <FaSkype className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </a>
                 )}
               </div>
@@ -278,6 +359,8 @@ END:VCARD`;
             </button>
           </div>
         </div>
+        </>
+        )}
       </div>
       {userId && <AIAssistant userId={userId} />}
     </div>

@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0201554996",
-  "appId": "1:149306295933:web:45df0f828dbd29d8f55314",
-  "apiKey": "AIzaSyAT1Eo9WNATeRCTo_guoXBvIYqVQf5B-t0",
-  "authDomain": "gen-lang-client-0201554996.firebaseapp.com",
+  "projectId": "cv-card-ia",
+  "appId": "1:503837773429:web:edf7594ffb157dd7cbf23c",
+  "apiKey": "AIzaSyDrDEo7-a5mrU170VcTFi19qXdlAYyqs0k",
+  "authDomain": "cv-card-ia.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-973ce13d-cf62-4d56-bab2-3bed2604f896",
-  "storageBucket": "gen-lang-client-0201554996.firebasestorage.app",
-  "messagingSenderId": "149306295933",
+  "storageBucket": "cv-card-ia.firebasestorage.app",
+  "messagingSenderId": "503837773429",
   "measurementId": ""
 }

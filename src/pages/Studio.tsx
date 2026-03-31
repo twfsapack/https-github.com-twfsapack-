@@ -12,6 +12,8 @@ import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHand
 
 import { useLanguage } from '../contexts/LanguageContext';
 
+import { AIAssistant } from '../components/AIAssistant';
+
 export const Studio: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -23,6 +25,8 @@ export const Studio: React.FC = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [bgColor, setBgColor] = useState('#18181b'); // bg-zinc-900 equivalent
   const [customBgImage, setCustomBgImage] = useState<string | null>(null);
+  const [headerFontSize, setHeaderFontSize] = useState<string>('text-xl sm:text-2xl lg:text-3xl');
+  const [bodyFontSize, setBodyFontSize] = useState<string>('text-sm sm:text-base lg:text-lg');
   const [showBgOptions, setShowBgOptions] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const bgInputRef = useRef<HTMLInputElement>(null);
@@ -109,6 +113,8 @@ export const Studio: React.FC = () => {
             if (data.studio.bgColor) setBgColor(data.studio.bgColor);
             if (data.studio.customBgImage) setCustomBgImage(data.studio.customBgImage);
             if (data.studio.generatedImage) setGeneratedImage(data.studio.generatedImage);
+            if (data.studio.headerFontSize) setHeaderFontSize(data.studio.headerFontSize);
+            if (data.studio.bodyFontSize) setBodyFontSize(data.studio.bodyFontSize);
           }
         } else {
           setProfile(prev => ({ ...prev, fullName: user.displayName || t('yourName') }));
@@ -125,7 +131,11 @@ export const Studio: React.FC = () => {
     setIsGenerating(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+      if (!apiKey) {
+        throw new Error("API Key not found in environment");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
@@ -194,7 +204,9 @@ export const Studio: React.FC = () => {
           textAlign,
           bgColor,
           customBgImage,
-          generatedImage
+          generatedImage,
+          headerFontSize,
+          bodyFontSize
         },
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -208,19 +220,42 @@ export const Studio: React.FC = () => {
     }
   };
 
+  const bumpFontSizeForDesktop = (sizeClass: string) => {
+    const map: Record<string, string> = {
+      'sm:text-sm': 'sm:text-base',
+      'sm:text-base': 'sm:text-lg',
+      'sm:text-lg': 'sm:text-xl',
+      'sm:text-xl': 'sm:text-2xl',
+      'sm:text-2xl': 'sm:text-3xl',
+      'sm:text-3xl': 'sm:text-4xl',
+      'sm:text-4xl': 'sm:text-5xl',
+      'lg:text-base': 'lg:text-lg',
+      'lg:text-lg': 'lg:text-xl',
+      'lg:text-xl': 'lg:text-2xl',
+      'lg:text-2xl': 'lg:text-3xl',
+      'lg:text-3xl': 'lg:text-4xl',
+      'lg:text-4xl': 'lg:text-5xl',
+      'lg:text-5xl': 'lg:text-6xl',
+    };
+    return sizeClass.split(' ').map(cls => map[cls] || cls).join(' ');
+  };
+
+  const previewHeaderFontSize = bumpFontSizeForDesktop(headerFontSize);
+  const previewBodyFontSize = bumpFontSizeForDesktop(bodyFontSize);
+
   return (
-    <div className="flex h-full bg-zinc-50">
+    <div className="flex flex-col md:flex-row flex-1 bg-zinc-50 md:overflow-hidden">
       {/* Left Panel - Controls */}
-      <div className="w-1/3 min-w-[320px] max-w-md bg-white border-r border-zinc-200 flex flex-col h-full overflow-y-auto">
-        <div className="p-6 border-b border-zinc-200">
-          <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+      <div className="w-full md:w-1/3 md:min-w-[320px] md:max-w-md bg-white border-t md:border-t-0 md:border-r border-zinc-200 flex flex-col h-auto md:h-full md:overflow-y-auto order-2 md:order-1">
+        <div className="p-4 sm:p-6 border-b border-zinc-200 shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-zinc-900 flex items-center gap-2">
             <Wand2 className="w-5 h-5 text-indigo-600" />
             {t('studio.title')}
           </h2>
-          <p className="text-sm text-zinc-500 mt-1">{t('studio.subtitle')}</p>
+          <p className="text-xs sm:text-sm text-zinc-500 mt-1">{t('studio.subtitle')}</p>
         </div>
 
-        <div className="p-6 flex-1 flex flex-col gap-6">
+        <div className="p-4 sm:p-6 flex-1 flex flex-col gap-6">
           {/* Prompt Area */}
           <div className="flex flex-col gap-3">
             <label className="text-sm font-semibold text-zinc-900">
@@ -322,6 +357,38 @@ export const Studio: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-600 flex items-center gap-2">
+                <Type className="w-4 h-4" /> Tamaño Cabecera
+              </span>
+              <select 
+                className="text-sm border-zinc-200 rounded-lg py-1.5 pl-3 pr-8 bg-zinc-50"
+                value={headerFontSize}
+                onChange={(e) => setHeaderFontSize(e.target.value)}
+              >
+                <option value="text-lg sm:text-xl lg:text-2xl">Pequeño</option>
+                <option value="text-xl sm:text-2xl lg:text-3xl">Normal</option>
+                <option value="text-2xl sm:text-3xl lg:text-4xl">Grande</option>
+                <option value="text-3xl sm:text-4xl lg:text-5xl">Muy Grande</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-zinc-600 flex items-center gap-2">
+                <Type className="w-4 h-4" /> Tamaño Cuerpo
+              </span>
+              <select 
+                className="text-sm border-zinc-200 rounded-lg py-1.5 pl-3 pr-8 bg-zinc-50"
+                value={bodyFontSize}
+                onChange={(e) => setBodyFontSize(e.target.value)}
+              >
+                <option value="text-xs sm:text-sm lg:text-base">Pequeño</option>
+                <option value="text-sm sm:text-base lg:text-lg">Normal</option>
+                <option value="text-base sm:text-lg lg:text-xl">Grande</option>
+                <option value="text-lg sm:text-xl lg:text-2xl">Muy Grande</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-zinc-600 flex items-center gap-2">
                 <QrCode className="w-4 h-4" /> {t('studio.qrCode')}
               </span>
               <button
@@ -395,11 +462,11 @@ export const Studio: React.FC = () => {
           </div>
         </div>
         
-        <div className="p-6 border-t border-zinc-200 bg-zinc-50">
+        <div className="p-4 sm:p-6 border-t border-zinc-200 bg-zinc-50 shrink-0">
           <button 
             onClick={handlePublish}
             disabled={isSaving}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 text-sm sm:text-base"
           >
             {isSaving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {saveSuccess ? t('studio.saved') : t('studio.publishChanges')}
@@ -408,40 +475,40 @@ export const Studio: React.FC = () => {
       </div>
 
       {/* Right Panel - Canvas */}
-      <div className="flex-1 flex flex-col bg-zinc-100/50 relative">
+      <div className="flex-1 flex flex-col bg-zinc-100 relative order-1 md:order-2 h-[45vh] min-h-[200px] md:min-h-0 md:h-full sticky top-0 z-30 shadow-md md:shadow-none">
         {/* Topbar */}
-        <div className="h-16 border-b border-zinc-200 bg-white flex items-center justify-center px-6">
+        <div className="h-14 sm:h-16 border-b border-zinc-200 bg-white flex items-center justify-center px-4 sm:px-6 shrink-0">
           <div className="flex bg-zinc-100 rounded-xl p-1">
             <button 
               onClick={() => setViewMode('desktop')}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all",
                 viewMode === 'desktop' ? "bg-white shadow-sm text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
               )}
             >
-              <Monitor className="w-4 h-4" /> {t('studio.desktop')}
+              <Monitor className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">{t('studio.desktop')}</span>
             </button>
             <button 
               onClick={() => setViewMode('mobile')}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all",
                 viewMode === 'mobile' ? "bg-white shadow-sm text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
               )}
             >
-              <Smartphone className="w-4 h-4" /> {t('studio.mobile')}
+              <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">{t('studio.mobile')}</span>
             </button>
           </div>
         </div>
 
         {/* Canvas Area */}
-        <div className="flex-1 overflow-auto bg-zinc-100/50 relative">
-          <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-8">
+        <div className="flex-1 overflow-auto bg-zinc-100 relative">
+          <div className="min-h-full w-full flex items-center justify-center p-2 sm:p-4 md:p-8">
             <div className={cn(
-              "relative transition-all duration-500 ease-in-out flex items-center justify-center shrink-0",
+              "relative transition-all duration-500 ease-in-out flex items-center justify-center shrink-0 max-w-full max-h-full",
               viewMode === 'desktop' 
-                ? "w-full max-w-3xl" 
-                : (orientation === 'horizontal' ? "w-[736px] aspect-[16/9]" : "h-[736px] aspect-[9/16]"),
-              viewMode === 'mobile' ? "bg-zinc-900 rounded-[3rem] shadow-2xl border-[14px] border-zinc-800 p-2" : "",
+                ? (orientation === 'horizontal' ? "w-full max-w-[920px]" : "w-full max-w-[460px]")
+                : (orientation === 'horizontal' ? "w-full max-w-[600px] sm:max-w-[736px] aspect-[16/9]" : "h-auto max-h-full aspect-[9/16] w-full max-w-[340px] sm:max-w-[400px]"),
+              viewMode === 'mobile' ? "bg-zinc-900 rounded-[2rem] sm:rounded-[3rem] shadow-2xl border-[8px] sm:border-[14px] border-zinc-800 p-1 sm:p-2 mx-auto" : "mx-auto",
               isGenerating && "blur-sm scale-95 opacity-80"
             )}>
               
@@ -458,7 +525,7 @@ export const Studio: React.FC = () => {
               {/* Card Preview Placeholder */}
               <div 
                 className={cn(
-                  "w-full flex flex-col items-center justify-center text-white p-6 sm:p-12 relative overflow-hidden transition-all duration-500",
+                  "w-full flex flex-col items-center justify-center text-white p-6 sm:p-14 relative overflow-hidden transition-all duration-500",
                   viewMode === 'mobile' ? "h-full rounded-[2.2rem]" : "rounded-3xl shadow-2xl border border-zinc-800",
                   viewMode === 'desktop' && (orientation === 'horizontal' ? "aspect-[16/9]" : "aspect-[9/16]"),
                   showQR ? "bg-white" : ""
@@ -513,10 +580,10 @@ export const Studio: React.FC = () => {
                     textAlign === 'left' ? "items-start" : textAlign === 'right' ? "items-end" : "items-center"
                   )}>
                     {profile.avatarUrl ? (
-                      <img src={profile.avatarUrl} alt="Avatar" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-white/30 mb-4 sm:mb-6 shadow-xl" />
+                      <img src={profile.avatarUrl} alt="Avatar" className={cn("w-20 h-20 sm:w-40 sm:h-40 rounded-full object-cover border-2 border-white/30 mb-4 sm:mb-6 shadow-xl", textAlign === 'left' ? "self-start" : textAlign === 'right' ? "self-end" : "self-center")} />
                     ) : (
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white/30 mb-4 sm:mb-6 shadow-xl flex items-center justify-center">
-                        <User className="w-10 h-10 text-white/50" />
+                      <div className={cn("w-20 h-20 sm:w-40 sm:h-40 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white/30 mb-4 sm:mb-6 shadow-xl flex items-center justify-center", textAlign === 'left' ? "self-start" : textAlign === 'right' ? "self-end" : "self-center")}>
+                        <User className="w-10 h-10 sm:w-16 sm:h-16 text-white/50" />
                       </div>
                     )}
                 
@@ -528,9 +595,10 @@ export const Studio: React.FC = () => {
                     "flex items-center gap-2 w-full max-w-full",
                     textAlign === 'left' ? "justify-start" : textAlign === 'right' ? "justify-end" : "justify-center"
                   )}>
-                    <User className="w-5 h-5 shrink-0 text-white/80" />
+                    <User className="w-5 h-5 sm:w-8 sm:h-8 shrink-0 text-white/80" />
                     <h1 className={cn(
-                      "text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate whitespace-nowrap",
+                      previewHeaderFontSize,
+                      "font-bold tracking-tight break-words min-w-0",
                       textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
                     )}>
                       {profile.fullName || t('yourName')}
@@ -541,8 +609,12 @@ export const Studio: React.FC = () => {
                     "flex items-center gap-2 w-full max-w-full",
                     textAlign === 'left' ? "justify-start" : textAlign === 'right' ? "justify-end" : "justify-center"
                   )}>
-                    <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-white/80" />
-                    <p className="text-sm sm:text-base lg:text-lg text-white/90 truncate whitespace-nowrap">
+                    <Briefcase className="w-4 h-4 sm:w-7 sm:h-7 shrink-0 text-white/80" />
+                    <p className={cn(
+                      previewBodyFontSize, 
+                      "text-white/90 break-words min-w-0",
+                      textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+                    )}>
                       {profile.title || t('yourTitle')}
                     </p>
                   </div>
@@ -553,21 +625,25 @@ export const Studio: React.FC = () => {
                   )}>
                     <a 
                       href={`tel:${profile.phone.replace(/\D/g, '')}`} 
-                      className="hover:scale-110 transition-transform p-1.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                      className="hover:scale-110 transition-transform p-1.5 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                       title={t('studio.call')}
                     >
-                      <FaPhoneAlt className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 text-white" />
+                      <FaPhoneAlt className="w-4 h-4 sm:w-6 sm:h-6 shrink-0 text-white" />
                     </a>
                     <a 
                       href={`https://wa.me/${profile.phone.replace(/\D/g, '')}`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="hover:scale-110 transition-transform p-1.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                      className="hover:scale-110 transition-transform p-1.5 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                       title={t('studio.whatsapp')}
                     >
-                      <FaWhatsapp className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 text-white" />
+                      <FaWhatsapp className="w-4 h-4 sm:w-6 sm:h-6 shrink-0 text-white" />
                     </a>
-                    <p className="text-sm sm:text-base lg:text-lg text-white/90 truncate whitespace-nowrap ml-1">
+                    <p className={cn(
+                      previewBodyFontSize, 
+                      "text-white/90 break-words min-w-0 ml-1",
+                      textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+                    )}>
                       {profile.phone || t('yourPhone')}
                     </p>
                   </div>
@@ -578,12 +654,16 @@ export const Studio: React.FC = () => {
                   )}>
                     <a 
                       href={`mailto:${profile.email}`} 
-                      className="hover:scale-110 transition-transform p-1.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                      className="hover:scale-110 transition-transform p-1.5 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                       title={t('studio.sendEmail')}
                     >
-                      <FaEnvelope className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 text-white" />
+                      <FaEnvelope className="w-4 h-4 sm:w-6 sm:h-6 shrink-0 text-white" />
                     </a>
-                    <p className="text-sm sm:text-base lg:text-lg text-white/90 truncate whitespace-nowrap ml-1">
+                    <p className={cn(
+                      previewBodyFontSize, 
+                      "text-white/90 break-words min-w-0 ml-1",
+                      textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+                    )}>
                       {profile.email || 'tu@email.com'}
                     </p>
                   </div>
@@ -597,12 +677,16 @@ export const Studio: React.FC = () => {
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.location)}`} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="hover:scale-110 transition-transform p-1.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                        className="hover:scale-110 transition-transform p-1.5 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                         title={t('studio.viewOnMap')}
                       >
-                        <FaMapMarkerAlt className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 text-white" />
+                        <FaMapMarkerAlt className="w-4 h-4 sm:w-6 sm:h-6 shrink-0 text-white" />
                       </a>
-                      <p className="text-sm sm:text-base lg:text-lg text-white/90 truncate whitespace-nowrap ml-1">
+                      <p className={cn(
+                        previewBodyFontSize, 
+                        "text-white/90 break-words min-w-0 ml-1",
+                        textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+                      )}>
                         {profile.location}
                       </p>
                     </div>
@@ -616,12 +700,16 @@ export const Studio: React.FC = () => {
                       href={`/cv/${user?.uid}`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="hover:scale-110 transition-transform p-1.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
+                      className="hover:scale-110 transition-transform p-1.5 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" 
                       title={t('studio.viewCV')}
                     >
-                      <FaFileAlt className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 text-white" />
+                      <FaFileAlt className="w-4 h-4 sm:w-6 sm:h-6 shrink-0 text-white" />
                     </a>
-                    <p className="text-sm sm:text-base lg:text-lg text-white/90 truncate whitespace-nowrap ml-1">
+                    <p className={cn(
+                      previewBodyFontSize, 
+                      "text-white/90 break-words min-w-0 ml-1",
+                      textAlign === 'left' ? "text-left" : textAlign === 'right' ? "text-right" : "text-center"
+                    )}>
                       {t('studio.myCV')}
                     </p>
                   </div>
@@ -633,33 +721,33 @@ export const Studio: React.FC = () => {
                       textAlign === 'left' ? "justify-start" : textAlign === 'right' ? "justify-end" : "justify-center"
                     )}>
                       {profile.socialLinks.linkedin && (
-                        <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="LinkedIn">
-                          <FaLinkedin className="w-4 h-4 text-white" />
+                        <a href={profile.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="LinkedIn">
+                          <FaLinkedin className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                         </a>
                       )}
                       {profile.socialLinks.github && (
-                        <a href={profile.socialLinks.github} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="GitHub">
-                          <FaGithub className="w-4 h-4 text-white" />
+                        <a href={profile.socialLinks.github} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="GitHub">
+                          <FaGithub className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                         </a>
                       )}
                       {profile.socialLinks.twitter && (
-                        <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Twitter / X">
-                          <FaXTwitter className="w-4 h-4 text-white" />
+                        <a href={profile.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Twitter / X">
+                          <FaXTwitter className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                         </a>
                       )}
                       {profile.socialLinks.website && (
-                        <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title={t('studio.website')}>
-                          <FaGlobe className="w-4 h-4 text-white" />
+                        <a href={profile.socialLinks.website} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title={t('studio.website')}>
+                          <FaGlobe className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                         </a>
                       )}
                       {profile.socialLinks.telegram && (
-                        <a href={profile.socialLinks.telegram.startsWith('http') ? profile.socialLinks.telegram : `https://t.me/${profile.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Telegram">
-                          <FaTelegramPlane className="w-4 h-4 text-white" />
+                        <a href={profile.socialLinks.telegram.startsWith('http') ? profile.socialLinks.telegram : `https://t.me/${profile.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Telegram">
+                          <FaTelegramPlane className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                         </a>
                       )}
                       {profile.socialLinks.skype && (
-                        <a href={`skype:${profile.socialLinks.skype}?chat`} className="hover:scale-110 transition-transform p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Skype">
-                          <FaSkype className="w-4 h-4 text-white" />
+                        <a href={`skype:${profile.socialLinks.skype}?chat`} className="hover:scale-110 transition-transform p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm" title="Skype">
+                          <FaSkype className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                         </a>
                       )}
                     </div>
@@ -673,6 +761,7 @@ export const Studio: React.FC = () => {
           </div>
         </div>
       </div>
+      {user && <AIAssistant userId={user.uid} />}
     </div>
   );
 };

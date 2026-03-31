@@ -15,6 +15,7 @@ export interface Profile {
   location?: string;
   allowPdfDownload?: boolean;
   isPremium?: boolean;
+  aiVoice?: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
   socialLinks?: {
     linkedin?: string;
     twitter?: string;
@@ -31,6 +32,8 @@ export interface Profile {
     bgColor?: string;
     customBgImage?: string | null;
     generatedImage?: string | null;
+    headerFontSize?: string;
+    bodyFontSize?: string;
   };
 }
 
@@ -39,6 +42,20 @@ export interface Experience {
   userId: string;
   company: string;
   role: string;
+  startDate: string;
+  endDate?: string;
+  current?: boolean;
+  description?: string;
+  location?: string;
+  order?: number;
+}
+
+export interface Education {
+  id: string;
+  userId: string;
+  institution: string;
+  degree: string;
+  fieldOfStudy?: string;
   startDate: string;
   endDate?: string;
   current?: boolean;

@@ -158,8 +158,7 @@ service cloud.firestore {
     }
 
     function isValidProfile() {
-      return hasOnlyAllowedFields(['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'studio', 'isPremium', 'createdAt', 'updatedAt']) &&
-             validStringLength('uid', 1, 100) &&
+      return validStringLength('uid', 1, 100) &&
              isValidOptionalString('fullName', 0, 100) &&
              isValidOptionalString('title', 0, 100) &&
              isValidOptionalString('bio', 0, 1000) &&
@@ -171,40 +170,54 @@ service cloud.firestore {
              (!( 'allowPdfDownload' in request.resource.data ) || request.resource.data.allowPdfDownload is bool) &&
              (!( 'studio' in request.resource.data ) || request.resource.data.studio is map) &&
              (!( 'isPremium' in request.resource.data ) || request.resource.data.isPremium is bool) &&
-             isValidDateString(request.resource.data.createdAt) &&
+             (!( 'createdAt' in request.resource.data ) || isValidDateString(request.resource.data.createdAt)) &&
              isValidDateString(request.resource.data.updatedAt);
     }
 
     function isValidExperience() {
       return hasOnlyAllowedFields(['userId', 'company', 'role', 'startDate', 'endDate', 'current', 'description', 'location', 'order']) &&
              validStringLength('userId', 1, 100) &&
-             validStringLength('company', 1, 100) &&
-             validStringLength('role', 1, 100) &&
+             validStringLength('company', 1, 200) &&
+             validStringLength('role', 1, 200) &&
              validStringLength('startDate', 1, 50) &&
              isValidOptionalString('endDate', 0, 50) &&
              (!( 'current' in request.resource.data ) || request.resource.data.current is bool) &&
-             isValidOptionalString('description', 0, 2000) &&
-             isValidOptionalString('location', 0, 100) &&
+             isValidOptionalString('description', 0, 5000) &&
+             isValidOptionalString('location', 0, 200) &&
+             (!( 'order' in request.resource.data ) || request.resource.data.order is number);
+    }
+
+    function isValidEducation() {
+      return hasOnlyAllowedFields(['userId', 'institution', 'degree', 'fieldOfStudy', 'startDate', 'endDate', 'current', 'description', 'location', 'order']) &&
+             validStringLength('userId', 1, 100) &&
+             validStringLength('institution', 1, 200) &&
+             validStringLength('degree', 1, 200) &&
+             isValidOptionalString('fieldOfStudy', 0, 200) &&
+             validStringLength('startDate', 1, 50) &&
+             isValidOptionalString('endDate', 0, 50) &&
+             (!( 'current' in request.resource.data ) || request.resource.data.current is bool) &&
+             isValidOptionalString('description', 0, 5000) &&
+             isValidOptionalString('location', 0, 200) &&
              (!( 'order' in request.resource.data ) || request.resource.data.order is number);
     }
 
     function isValidProject() {
       return hasOnlyAllowedFields(['userId', 'name', 'description', 'role', 'url', 'imageUrl', 'imageUrls', 'location', 'order']) &&
              validStringLength('userId', 1, 100) &&
-             validStringLength('name', 1, 100) &&
-             validStringLength('description', 1, 2000) &&
-             isValidOptionalString('role', 0, 100) &&
+             validStringLength('name', 1, 200) &&
+             validStringLength('description', 1, 5000) &&
+             isValidOptionalString('role', 0, 200) &&
              isValidOptionalUrl('url') &&
              isValidOptionalUrl('imageUrl') &&
-             isValidOptionalUrlList('imageUrls', 3) &&
-             isValidOptionalString('location', 0, 100) &&
+             isValidOptionalUrlList('imageUrls', 10) &&
+             isValidOptionalString('location', 0, 200) &&
              (!( 'order' in request.resource.data ) || request.resource.data.order is number);
     }
 
     function isValidSkill() {
       return hasOnlyAllowedFields(['userId', 'name', 'category', 'order']) &&
              validStringLength('userId', 1, 100) &&
-             validStringLength('name', 1, 50) &&
+             validStringLength('name', 1, 100) &&
              request.resource.data.category in ['technical', 'soft', 'tools'] &&
              (!( 'order' in request.resource.data ) || request.resource.data.order is number);
     }
@@ -212,8 +225,8 @@ service cloud.firestore {
     function isValidCertificate() {
       return hasOnlyAllowedFields(['userId', 'name', 'issuer', 'date', 'imageUrl', 'url', 'order']) &&
              validStringLength('userId', 1, 100) &&
-             validStringLength('name', 1, 100) &&
-             validStringLength('issuer', 1, 100) &&
+             validStringLength('name', 1, 200) &&
+             validStringLength('issuer', 1, 200) &&
              isValidOptionalString('date', 0, 50) &&
              isValidOptionalUrl('imageUrl') &&
              isValidOptionalUrl('url') &&
@@ -257,6 +270,13 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isOwner(userId) && isValidExperience() && userIdUnchanged();
         allow update: if isOwner(userId) && isValidExperience() && userIdNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      match /educations/{educationId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidEducation() && userIdUnchanged();
+        allow update: if isOwner(userId) && isValidEducation() && userIdNotModified();
         allow delete: if isOwner(userId);
       }
 

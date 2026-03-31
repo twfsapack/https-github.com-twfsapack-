@@ -101,11 +101,21 @@ export const Profile: React.FC = () => {
 
     try {
       const docRef = doc(db, 'profiles', user.uid);
-      await setDoc(docRef, {
-        ...profile,
+      const allowedKeys = ['uid', 'fullName', 'title', 'bio', 'avatarUrl', 'phone', 'email', 'location', 'socialLinks', 'allowPdfDownload', 'studio', 'isPremium', 'aiVoice', 'createdAt', 'updatedAt'];
+      const payload: any = {
         uid: user.uid,
         updatedAt: new Date().toISOString()
-      }, { merge: true });
+      };
+      
+      // Only include allowed keys from profile
+      Object.keys(profile).forEach(key => {
+        if (allowedKeys.includes(key) && (profile as any)[key] !== undefined) {
+          payload[key] = (profile as any)[key];
+        }
+      });
+      
+      console.log("Saving profile payload:", payload);
+      await setDoc(docRef, payload, { merge: true });
       
       setSuccessMsg(t('profile.success'));
       setTimeout(() => setSuccessMsg(''), 3000);
@@ -121,18 +131,18 @@ export const Profile: React.FC = () => {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto dark:bg-zinc-950 min-h-full transition-colors duration-300">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white transition-colors">{t('profile.title')}</h1>
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400 transition-colors">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto dark:bg-zinc-950 flex-1 w-full transition-colors duration-300">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white transition-colors">{t('profile.title')}</h1>
+        <p className="mt-1 sm:mt-2 text-sm sm:text-base text-zinc-600 dark:text-zinc-400 transition-colors">
           {t('profile.subtitle')}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
         {/* Foto de Perfil */}
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex items-center gap-6 transition-colors">
-          <div className="relative group">
+        <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left transition-colors">
+          <div className="relative group shrink-0">
             <div className="w-24 h-24 rounded-full bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center overflow-hidden transition-colors">
               {profile.avatarUrl ? (
                 <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
@@ -155,13 +165,13 @@ export const Profile: React.FC = () => {
               className="hidden"
             />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-medium text-zinc-900 dark:text-white transition-colors">{t('profile.photo')}</h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 transition-colors">Sube una foto profesional. Se redimensionará automáticamente.</p>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-3 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              className="mt-3 sm:mt-4 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors w-full sm:w-auto"
             >
               {t('profile.uploadPhoto')}
             </button>
@@ -169,10 +179,10 @@ export const Profile: React.FC = () => {
         </div>
 
         {/* Información Básica */}
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-6 transition-colors">
-          <h3 className="text-lg font-medium text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-4 transition-colors">{t('profile.personalInfo')}</h3>
+        <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-5 sm:space-y-6 transition-colors">
+          <h3 className="text-lg font-medium text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3 sm:pb-4 transition-colors">{t('profile.personalInfo')}</h3>
           
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:gap-6 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 transition-colors">{t('profile.fullName')}</label>
               <input
@@ -247,6 +257,26 @@ export const Profile: React.FC = () => {
                 Activar versión Freemium (Asistente IA en tu tarjeta pública)
               </label>
             </div>
+
+            {profile.isPremium && (
+              <div className="sm:col-span-2 p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50 dark:border-indigo-800/20">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 transition-colors">Voz del Asistente IA</label>
+                <select
+                  value={profile.aiVoice || 'Zephyr'}
+                  onChange={(e) => setProfile({ ...profile, aiVoice: e.target.value as any })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                >
+                  <option value="Zephyr">Zephyr (Masculina, profesional)</option>
+                  <option value="Puck">Puck (Masculina, enérgica)</option>
+                  <option value="Charon">Charon (Masculina, profunda)</option>
+                  <option value="Kore">Kore (Femenina, clara)</option>
+                  <option value="Fenrir">Fenrir (Masculina, grave)</option>
+                </select>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                  Selecciona la voz que mejor represente tu marca personal.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

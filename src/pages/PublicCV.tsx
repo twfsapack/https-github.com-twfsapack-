@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { Download, Loader2 } from 'lucide-react';
-import { Profile as ProfileType, Experience as ExperienceType, Project as ProjectType, Skill as SkillType, Certificate as CertificateType } from '../types';
-import { useReactToPrint } from 'react-to-print';
+import { Profile as ProfileType, Experience as ExperienceType, Project as ProjectType, Skill as SkillType, Certificate as CertificateType, Education as EducationType } from '../types';
 import { DossierView } from '../components/DossierView';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -20,12 +19,12 @@ export const PublicCV: React.FC = () => {
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const [skills, setSkills] = useState<SkillType[]>([]);
   const [certificates, setCertificates] = useState<CertificateType[]>([]);
+  const [educations, setEducations] = useState<EducationType[]>([]);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right' | 'justify'>('center');
 
-  const cvRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: cvRef,
-    documentTitle: profile ? `CV_${profile.fullName?.replace(/\s+/g, '_')}` : 'CV',
-  });
+  const handlePrint = () => {
+    window.print();
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,7 +45,7 @@ export const PublicCV: React.FC = () => {
         }
 
         const expSnap = await getDocs(collection(db, `profiles/${userId}/experiences`));
-        setExperiences(expSnap.docs.map(d => ({ id: d.id, ...d.data() } as ExperienceType)));
+        setExperiences(expSnap.docs.map(d => ({ id: d.id, ...d.data() } as ExperienceType)).sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '')));
 
         const projSnap = await getDocs(collection(db, `profiles/${userId}/projects`));
         setProjects(projSnap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectType)));
@@ -56,6 +55,14 @@ export const PublicCV: React.FC = () => {
 
         const certSnap = await getDocs(collection(db, `profiles/${userId}/certificates`));
         setCertificates(certSnap.docs.map(d => ({ id: d.id, ...d.data() } as CertificateType)));
+
+        const eduSnap = await getDocs(collection(db, `profiles/${userId}/educations`));
+        setEducations(eduSnap.docs.map(d => ({ id: d.id, ...d.data() } as EducationType)).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')));
+
+        const studioSnap = await getDoc(doc(db, 'studio', userId));
+        if (studioSnap.exists()) {
+          setTextAlign(studioSnap.data().textAlign || 'center');
+        }
       } catch (err) {
         console.error("Error fetching CV data:", err);
         setError(t('errorLoadingCV'));
@@ -86,11 +93,11 @@ export const PublicCV: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 py-8 px-4 sm:px-8 flex flex-col items-center relative overflow-hidden">
+    <div className="min-h-screen bg-zinc-100 py-8 px-4 sm:px-8 flex flex-col items-center relative overflow-hidden print:bg-white print:py-0 print:px-0">
       {profile.allowPdfDownload && (
-        <div className="w-full max-w-[210mm] flex justify-end mb-4 z-10">
+        <div className="w-full max-w-[210mm] flex justify-end mb-4 z-10 print:hidden">
           <button
-            onClick={() => handlePrint()}
+            onClick={handlePrint}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
             <Download className="w-4 h-4" /> {t('downloadPDF')}
@@ -99,26 +106,29 @@ export const PublicCV: React.FC = () => {
       )}
 
       {/* Dossier View */}
-      <DossierView 
-        profile={profile}
-        experiences={experiences}
-        projects={projects}
-        skills={skills}
-        certificates={certificates}
-      />
+      <div className="print:hidden w-full flex justify-center">
+        <DossierView 
+          profile={profile}
+          experiences={experiences}
+          projects={projects}
+          skills={skills}
+          certificates={certificates}
+          educations={educations}
+          textAlign={textAlign}
+        />
+      </div>
 
       {/* Hidden CV for PDF Download */}
-      <div className="absolute top-[-9999px] left-[-9999px] opacity-0 pointer-events-none">
-        <div ref={cvRef}>
-          <DossierView 
-            profile={profile}
-            experiences={experiences}
-            projects={projects}
-            skills={skills}
-            certificates={certificates}
-            isPrint={true}
-          />
-        </div>
+      <div className="hidden print:block w-full">
+        <DossierView 
+          profile={profile}
+          experiences={experiences}
+          projects={projects}
+          skills={skills}
+          certificates={certificates}
+          educations={educations}
+          isPrint={true}
+        />
       </div>
     </div>
   );
